@@ -32,10 +32,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
 
+COPY --from=builder2 /build/new-api /
 # Hugging Face Spaces (Docker) expects the app to listen on $PORT (default: 7860).
+# For non-HF environments, you can override with `-e PORT=3000` (or leave it unset to use the default flag port).
 ENV PORT=7860
 
-COPY --from=builder2 /build/new-api /
-EXPOSE 7860
+EXPOSE 3000 7860
 WORKDIR /data
 ENTRYPOINT ["/new-api"]
