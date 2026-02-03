@@ -2,14 +2,15 @@ FROM oven/bun:latest AS builder
 
 WORKDIR /build
 ENV CI=""
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ARG NODE_OPTIONS="--max-old-space-size=2048"
+ENV NODE_OPTIONS=$NODE_OPTIONS
 COPY web/package.json .
 COPY web/bun.lock .
-RUN bun install
 COPY ./web .
 COPY ./VERSION .
-# HF Spaces can abort long-running steps with little/no output; keep a small heartbeat during the build.
-RUN /bin/sh -c 'set -e; ( while :; do echo "[web] vite build still running..."; sleep 30; done ) & ticker=$!; trap "kill $ticker" EXIT; DISABLE_ESLINT_PLUGIN="true" VITE_REACT_APP_VERSION="$(cat VERSION)" bun run build'
+# If web/dist already exists in build context, reuse it to avoid a heavy Vite build on low-memory servers.
+# Otherwise, build it.
+RUN /bin/sh -c 'set -e; if [ -d dist ] && [ -f dist/index.html ]; then echo "[web] using prebuilt dist/"; else bun install && DISABLE_ESLINT_PLUGIN="true" VITE_REACT_APP_VERSION="$(cat VERSION)" bun run build; fi'
 
 FROM golang:alpine AS builder2
 ENV GO111MODULE=on CGO_ENABLED=0

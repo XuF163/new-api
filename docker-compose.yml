@@ -22,6 +22,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Build-time memory limit for Vite/JS tooling (tune if your build gets killed with exit 137).
+        NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=2048}
     image: ${NEW_API_IMAGE:-new-api:local}
     container_name: new-api
     restart: always
