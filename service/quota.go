@@ -140,6 +140,10 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 
 	if userQuota < quota {
 		if common.PostpaidEnabled && common.PostpaidCreditDays > 0 {
+			if err := CheckPostpaidDailyDebtLimit(relayInfo.UserId, userQuota, quota); err != nil {
+				return err
+			}
+
 			// Only enforce due time when the user is already in debt.
 			if userQuota < 0 {
 				debtStartTime, err := model.GetUserDebtStartTime(relayInfo.UserId)

@@ -221,7 +221,10 @@ const TopUp = () => {
             let url = res.data.url;
             let form = document.createElement('form');
             form.action = url;
-            form.method = 'POST';
+            // Some Epay providers only accept GET for submit.php (otherwise they return "不支持的请求类型").
+            // Using GET also works for most Epay implementations and avoids provider-specific POST constraints.
+            form.method =
+              typeof url === 'string' && url.includes('submit.php') ? 'GET' : 'POST';
             let isSafari =
               navigator.userAgent.indexOf('Safari') > -1 &&
               navigator.userAgent.indexOf('Chrome') < 1;

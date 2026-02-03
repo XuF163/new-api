@@ -4,11 +4,16 @@
 #   docker compose up -d --build
 #
 # Tip: Put secrets in a .env file (NOT committed), e.g.:
-#   POSTGRES_PASSWORD=your_strong_password
 #   SESSION_SECRET=your_random_string
+#   # Optional (enable Postgres/Redis profile):
+#   POSTGRES_PASSWORD=your_strong_password
+#   SQL_DSN=postgresql://root:${POSTGRES_PASSWORD}@postgres:5432/new-api
+#   REDIS_CONN_STRING=redis://redis
 #
 # Then run:
 #   docker compose up -d --build
+# Or with Postgres/Redis:
+#   docker compose --profile infra up -d --build
 
 version: "3.4"
 
@@ -22,24 +27,21 @@ services:
     restart: always
     command: --log-dir /app/logs
     ports:
-      - "${NEW_API_PORT:-3000}:3000"
+      # External port requirement: 6388
+      - "${NEW_API_PORT:-6388}:3000"
     volumes:
       - ./data:/data
       - ./logs:/app/logs
     environment:
       TZ: ${TZ:-Asia/Shanghai}
-      # Dockerfile defaults PORT=7860 for Hugging Face; override for local/production compose.
-      PORT: ${PORT:-3000}
-      # Recommended to set explicitly in .env for production.
-      SQL_DSN: ${SQL_DSN:-postgresql://root:${POSTGRES_PASSWORD:-PLEASE_CHANGE_ME}@postgres:5432/new-api}
-      REDIS_CONN_STRING: ${REDIS_CONN_STRING:-redis://redis}
+      PORT: 3000
+      # Default: SQLite (data stored in ./data). To use Postgres/Redis, set these in a .env file.
+      SQL_DSN: ${SQL_DSN:-}
+      REDIS_CONN_STRING: ${REDIS_CONN_STRING:-}
       ERROR_LOG_ENABLED: ${ERROR_LOG_ENABLED:-true}
       BATCH_UPDATE_ENABLED: ${BATCH_UPDATE_ENABLED:-true}
       # Set this for multi-node deployments.
       SESSION_SECRET: ${SESSION_SECRET:-}
-    depends_on:
-      - redis
-      - postgres
     healthcheck:
       test:
         [
@@ -59,6 +61,7 @@ services:
     image: redis:7-alpine
     container_name: redis
     restart: always
+    profiles: ["infra"]
     volumes:
       - redis_data:/data
 
@@ -66,6 +69,7 @@ services:
     image: postgres:15
     container_name: postgres
     restart: always
+    profiles: ["infra"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-root}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-PLEASE_CHANGE_ME}

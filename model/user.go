@@ -36,6 +36,8 @@ type User struct {
 	AccessToken      *string        `json:"access_token" gorm:"type:char(32);column:access_token;uniqueIndex"` // this token is for system management
 	Quota            int            `json:"quota" gorm:"type:int;default:0"`
 	DebtStartTime    int64          `json:"debt_start_time" gorm:"type:bigint;default:0;column:debt_start_time"`
+	DebtDailyDate    int            `json:"debt_daily_date" gorm:"type:int;default:0;column:debt_daily_date"`
+	DebtDailyBase    int            `json:"debt_daily_base" gorm:"type:int;default:0;column:debt_daily_base"`
 	UsedQuota        int            `json:"used_quota" gorm:"type:int;default:0;column:used_quota"` // used quota
 	RequestCount     int            `json:"request_count" gorm:"type:int;default:0;"`               // request number
 	Group            string         `json:"group" gorm:"type:varchar(64);default:'default'"`
@@ -718,6 +720,20 @@ func GetUserDebtStartTime(id int) (debtStartTime int64, err error) {
 	return debtStartTime, err
 }
 
+type UserDebtDailyState struct {
+	DebtDailyDate int `gorm:"column:debt_daily_date"`
+	DebtDailyBase int `gorm:"column:debt_daily_base"`
+}
+
+func GetUserDebtDailyState(id int) (state UserDebtDailyState, err error) {
+	err = DB.Model(&User{}).
+		Where("id = ?", id).
+		Select("debt_daily_date, debt_daily_base").
+		Scan(&state).
+		Error
+	return state, err
+}
+
 func TrySetUserDebtStartTimeIfUnset(id int, debtStartTime int64) error {
 	return DB.Model(&User{}).
 		Where("id = ? AND debt_start_time = 0", id).
@@ -831,10 +847,23 @@ func deltaUpdateUserQuotaInDB(id int, delta int) (err error) {
 		return nil
 	}
 	now := time.Now().Unix()
+	today, _ := strconv.Atoi(time.Now().Format("20060102"))
 
 	updates := map[string]interface{}{
 		"quota": gorm.Expr("quota + ?", delta),
 	}
+
+	// Maintain a daily base debt snapshot so we can enforce a per-day debt increase limit.
+	// - debt_daily_date: current day in YYYYMMDD
+	// - debt_daily_base: user's debt (max(0, -quota)) at the first quota update of that day
+	updates["debt_daily_date"] = gorm.Expr(
+		"CASE WHEN debt_daily_date != ? THEN ? ELSE debt_daily_date END",
+		today, today,
+	)
+	updates["debt_daily_base"] = gorm.Expr(
+		"CASE WHEN debt_daily_date != ? THEN CASE WHEN quota < 0 THEN -quota ELSE 0 END ELSE debt_daily_base END",
+		today,
+	)
 
 	// Maintain a debt start timestamp so we can enforce postpaid credit days.
 	// - If quota becomes non-negative: clear debt_start_time.

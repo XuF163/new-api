@@ -39,6 +39,7 @@ const OperationSetting = () => {
     'quota_setting.enable_free_model_pre_consume': true,
     PostpaidEnabled: false,
     PostpaidCreditDays: 0,
+    PostpaidDailyDebtLimit: 0,
 
     /* 通用设置 */
     TopUpLink: '',

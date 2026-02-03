@@ -110,6 +110,7 @@ func InitOptionMap() {
 	common.OptionMap["PreConsumedQuota"] = strconv.Itoa(common.PreConsumedQuota)
 	common.OptionMap["PostpaidEnabled"] = strconv.FormatBool(common.PostpaidEnabled)
 	common.OptionMap["PostpaidCreditDays"] = strconv.Itoa(common.PostpaidCreditDays)
+	common.OptionMap["PostpaidDailyDebtLimit"] = strconv.Itoa(common.PostpaidDailyDebtLimit)
 	common.OptionMap["ModelRequestRateLimitCount"] = strconv.Itoa(setting.ModelRequestRateLimitCount)
 	common.OptionMap["ModelRequestRateLimitDurationMinutes"] = strconv.Itoa(setting.ModelRequestRateLimitDurationMinutes)
 	common.OptionMap["ModelRequestRateLimitSuccessCount"] = strconv.Itoa(setting.ModelRequestRateLimitSuccessCount)
@@ -405,6 +406,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.PostpaidEnabled = value == "true"
 	case "PostpaidCreditDays":
 		common.PostpaidCreditDays, _ = strconv.Atoi(value)
+	case "PostpaidDailyDebtLimit":
+		common.PostpaidDailyDebtLimit, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitCount":
 		setting.ModelRequestRateLimitCount, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitDurationMinutes":

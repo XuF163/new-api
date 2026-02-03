@@ -8,12 +8,14 @@
 
 - `PostpaidEnabled`：是否启用后付费（赊账）。
 - `PostpaidCreditDays`：赊账天数（天）。设置为 `0` 表示不允许赊账。
+- `PostpaidDailyDebtLimit`：单日赊账最大额度（额度单位）。设置为 `0` 表示不限制（以服务端本地时间 00:00 为分界，仅限制当日“新增欠费”）。
 
 ## 行为说明
 
 - 开启后，用户 `quota` 可变为负数，负数部分表示欠费额度。
 - 当用户首次进入欠费（`quota < 0`）时，会记录欠费开始时间 `debt_start_time`（Unix 秒）。
 - 若当前时间超过 `debt_start_time + PostpaidCreditDays` 且仍处于欠费状态（`quota < 0`），将拒绝继续调用（充值后恢复）。
+- 若配置了 `PostpaidDailyDebtLimit`，当日新增欠费超过上限时将拒绝继续调用（充值减少欠费后可恢复）。
 - 当充值/返还等操作使 `quota >= 0` 时，`debt_start_time` 会被清零。
 
 ## 接口返回

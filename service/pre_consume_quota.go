@@ -41,6 +41,17 @@ func PreConsumeQuota(c *gin.Context, preConsumedQuota int, relayInfo *relaycommo
 	if quotaNotEnough {
 		// Postpaid mode: allow negative quota (debt) within the configured credit period.
 		if common.PostpaidEnabled && common.PostpaidCreditDays > 0 {
+			// Enforce per-day max additional debt.
+			if err := CheckPostpaidDailyDebtLimit(relayInfo.UserId, userQuota, preConsumedQuota); err != nil {
+				return types.NewErrorWithStatusCode(
+					err,
+					types.ErrorCodeInsufficientUserQuota,
+					http.StatusForbidden,
+					types.ErrOptionWithSkipRetry(),
+					types.ErrOptionWithNoRecordErrorLog(),
+				)
+			}
+
 			// Only enforce due time when the user is already in debt.
 			if userQuota < 0 {
 				debtStartTime, err := model.GetUserDebtStartTime(relayInfo.UserId)

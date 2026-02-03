@@ -39,6 +39,7 @@ export default function SettingsCreditLimit(props) {
     'quota_setting.enable_free_model_pre_consume': true,
     PostpaidEnabled: false,
     PostpaidCreditDays: '',
+    PostpaidDailyDebtLimit: '',
   });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
@@ -223,6 +224,25 @@ export default function SettingsCreditLimit(props) {
                     setInputs({
                       ...inputs,
                       PostpaidCreditDays: String(value),
+                    })
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.InputNumber
+                  label={t('å•æ—¥èµŠè´¦æœ€å¤§é¢åº¦')}
+                  field={'PostpaidDailyDebtLimit'}
+                  step={1}
+                  min={0}
+                  suffix={'Token'}
+                  extraText={t(
+                    'ä»…é™åˆ¶å½“æ—¥æ–°å¢žæ¬ è´¹é¢åº¦ï¼Œè®¾ç½®ä¸?0 è¡¨ç¤ºä¸é™åˆ¶ï¼ˆä»¥æœåŠ¡å™¨å½“åœ°0ç‚¹ä¸ºåˆ†ç•Œï¼?)',
+                  )}
+                  placeholder={t('ä¾‹å¦‚ï¼?100000')}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      PostpaidDailyDebtLimit: String(value),
                     })
                   }
                 />

@@ -474,8 +474,9 @@ func GetSelf(c *gin.Context) {
 
 	postpaidEnabled := common.PostpaidEnabled && common.PostpaidCreditDays > 0
 	postpaidInfo := map[string]interface{}{
-		"enabled":     postpaidEnabled,
-		"credit_days": common.PostpaidCreditDays,
+		"enabled":          postpaidEnabled,
+		"credit_days":      common.PostpaidCreditDays,
+		"daily_debt_limit": common.PostpaidDailyDebtLimit,
 	}
 	if user.Quota < 0 {
 		postpaidInfo["debt_quota"] = -user.Quota

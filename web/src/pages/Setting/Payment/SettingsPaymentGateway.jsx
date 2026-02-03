@@ -159,7 +159,7 @@ export default function SettingsPaymentGateway(props) {
       if (inputs.CustomCallbackAddress !== '') {
         options.push({
           key: 'CustomCallbackAddress',
-          value: inputs.CustomCallbackAddress,
+          value: removeTrailingSlash(inputs.CustomCallbackAddress),
         });
       }
       if (originInputs['TopupGroupRatio'] !== inputs.TopupGroupRatio) {

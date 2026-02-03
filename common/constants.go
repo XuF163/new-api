@@ -115,6 +115,11 @@ var PreConsumedQuota = 500
 var PostpaidEnabled = false
 var PostpaidCreditDays = 0
 
+// Daily max additional debt (quota units) allowed per user.
+// 0 means unlimited.
+// "Daily" is measured by local server day boundary (00:00).
+var PostpaidDailyDebtLimit = 0
+
 var RetryTimes = 0
 
 //var RootUserEmail = ""

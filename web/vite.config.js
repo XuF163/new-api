@@ -25,16 +25,19 @@ import { codeInspectorPlugin } from 'code-inspector-plugin';
 const { vitePluginSemi } = pkg;
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   plugins: [
-    codeInspectorPlugin({
-      bundler: 'vite',
-    }),
+    // Only enable in dev; it can significantly slow down production builds (e.g. in CI/HF Spaces).
+    command === 'serve'
+      ? codeInspectorPlugin({
+          bundler: 'vite',
+        })
+      : null,
     {
       name: 'treat-js-files-as-jsx',
       async transform(code, id) {
@@ -54,7 +57,7 @@ export default defineConfig({
     vitePluginSemi({
       cssLayer: true,
     }),
-  ],
+  ].filter(Boolean),
   optimizeDeps: {
     force: true,
     esbuildOptions: {
@@ -104,4 +107,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

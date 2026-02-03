@@ -8,7 +8,9 @@ COPY . .
 RUN test -f VERSION || echo "dev" > VERSION && \
     if [ -f web/package.json ]; then \
       cd web && \
-      bun install && \
+      CI="" NODE_OPTIONS="--max-old-space-size=4096" bun install && \
+      ( while :; do echo "[web] vite build still running..."; sleep 30; done ) & ticker=$!; \
+      trap "kill $ticker" EXIT; \
       DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(cat /build/VERSION) bun run build ; \
     else \
       mkdir -p web/dist && \
