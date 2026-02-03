@@ -1,0 +1,10 @@
+version: "3.4"
+
+services:
+  new-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Build-time memory limit for Vite/JS tooling (tune if your build gets killed with exit 137).
+        NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=2048}

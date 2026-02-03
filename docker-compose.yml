@@ -11,21 +11,17 @@
 #   REDIS_CONN_STRING=redis://redis
 #
 # Then run:
-#   docker compose up -d --build
+#   docker compose up -d
+# Or build from local source:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 # Or with Postgres/Redis:
-#   docker compose --profile infra up -d --build
+#   docker compose --profile infra up -d
 
 version: "3.4"
 
 services:
   new-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        # Build-time memory limit for Vite/JS tooling (tune if your build gets killed with exit 137).
-        NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=2048}
-    image: ${NEW_API_IMAGE:-new-api:local}
+    image: ${NEW_API_IMAGE:-ghcr.io/xuf163/new-api:latest}
     container_name: new-api
     restart: always
     command: --log-dir /app/logs
