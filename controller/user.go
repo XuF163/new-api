@@ -472,6 +472,20 @@ func GetSelf(c *gin.Context) {
 		"permissions":       permissions,                // 新增权限字段
 	}
 
+	postpaidEnabled := common.PostpaidEnabled && common.PostpaidCreditDays > 0
+	postpaidInfo := map[string]interface{}{
+		"enabled":     postpaidEnabled,
+		"credit_days": common.PostpaidCreditDays,
+	}
+	if user.Quota < 0 {
+		postpaidInfo["debt_quota"] = -user.Quota
+		postpaidInfo["debt_start_time"] = user.DebtStartTime
+		if postpaidEnabled && user.DebtStartTime > 0 {
+			postpaidInfo["debt_due_time"] = user.DebtStartTime + int64(common.PostpaidCreditDays)*24*60*60
+		}
+	}
+	responseData["postpaid"] = postpaidInfo
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

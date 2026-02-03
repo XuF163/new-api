@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -35,11 +36,51 @@ func PreConsumeQuota(c *gin.Context, preConsumedQuota int, relayInfo *relaycommo
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
 	}
-	if userQuota <= 0 {
-		return types.NewErrorWithStatusCode(fmt.Errorf("用户额度不足, 剩余额度: %s", logger.FormatQuota(userQuota)), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
-	}
-	if userQuota-preConsumedQuota < 0 {
-		return types.NewErrorWithStatusCode(fmt.Errorf("预扣费额度失败, 用户剩余额度: %s, 需要预扣费额度: %s", logger.FormatQuota(userQuota), logger.FormatQuota(preConsumedQuota)), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+
+	quotaNotEnough := userQuota <= 0 || userQuota-preConsumedQuota < 0
+	if quotaNotEnough {
+		// Postpaid mode: allow negative quota (debt) within the configured credit period.
+		if common.PostpaidEnabled && common.PostpaidCreditDays > 0 {
+			// Only enforce due time when the user is already in debt.
+			if userQuota < 0 {
+				debtStartTime, err := model.GetUserDebtStartTime(relayInfo.UserId)
+				if err != nil {
+					return types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
+				}
+				if debtStartTime == 0 {
+					now := time.Now().Unix()
+					_ = model.TrySetUserDebtStartTimeIfUnset(relayInfo.UserId, now)
+					debtStartTime = now
+				}
+				dueTime := debtStartTime + int64(common.PostpaidCreditDays)*24*60*60
+				if time.Now().Unix() > dueTime {
+					return types.NewErrorWithStatusCode(
+						fmt.Errorf("赊账已逾期，请先充值后再使用（欠费开始时间: %d, 赊账天数: %d）", debtStartTime, common.PostpaidCreditDays),
+						types.ErrorCodeInsufficientUserQuota,
+						http.StatusForbidden,
+						types.ErrOptionWithSkipRetry(),
+						types.ErrOptionWithNoRecordErrorLog(),
+					)
+				}
+			}
+		} else {
+			if userQuota <= 0 {
+				return types.NewErrorWithStatusCode(
+					fmt.Errorf("用户额度不足, 剩余额度: %s", logger.FormatQuota(userQuota)),
+					types.ErrorCodeInsufficientUserQuota,
+					http.StatusForbidden,
+					types.ErrOptionWithSkipRetry(),
+					types.ErrOptionWithNoRecordErrorLog(),
+				)
+			}
+			return types.NewErrorWithStatusCode(
+				fmt.Errorf("预扣费额度失败, 用户剩余额度: %s, 需要预扣费额度: %s", logger.FormatQuota(userQuota), logger.FormatQuota(preConsumedQuota)),
+				types.ErrorCodeInsufficientUserQuota,
+				http.StatusForbidden,
+				types.ErrOptionWithSkipRetry(),
+				types.ErrOptionWithNoRecordErrorLog(),
+			)
+		}
 	}
 
 	trustQuota := common.GetTrustQuota()

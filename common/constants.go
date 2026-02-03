@@ -109,6 +109,12 @@ var AutomaticEnableChannelEnabled = false
 var QuotaRemindThreshold = 1000
 var PreConsumedQuota = 500
 
+// Postpaid (bill first, pay later)
+// When enabled, users are allowed to go into negative quota (debt) within the configured credit period.
+// Credit period is measured in days since the first time a user goes into debt.
+var PostpaidEnabled = false
+var PostpaidCreditDays = 0
+
 var RetryTimes = 0
 
 //var RootUserEmail = ""

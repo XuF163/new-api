@@ -37,6 +37,8 @@ export default function SettingsCreditLimit(props) {
     QuotaForInviter: '',
     QuotaForInvitee: '',
     'quota_setting.enable_free_model_pre_consume': true,
+    PostpaidEnabled: false,
+    PostpaidCreditDays: '',
   });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
@@ -191,8 +193,51 @@ export default function SettingsCreditLimit(props) {
               </Button>
             </Row>
           </Form.Section>
+
+          <Form.Section text={t('先出账后付费')}>
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Switch
+                  label={t('启用后付费（赊账）')}
+                  field={'PostpaidEnabled'}
+                  extraText={t(
+                    '开启后，用户额度不足时仍可继续使用；当欠费超过赊账天数将被限制调用（充值后恢复）',
+                  )}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      PostpaidEnabled: value,
+                    })
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.InputNumber
+                  label={t('赊账天数')}
+                  field={'PostpaidCreditDays'}
+                  step={1}
+                  min={0}
+                  extraText={t('设置为 0 表示不允许赊账')}
+                  placeholder={t('例如：7')}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      PostpaidCreditDays: String(value),
+                    })
+                  }
+                />
+              </Col>
+            </Row>
+
+            <Row>
+              <Button size='default' onClick={onSubmit}>
+                {t('保存后付费设置')}
+              </Button>
+            </Row>
+          </Form.Section>
         </Form>
       </Spin>
     </>
   );
 }
+

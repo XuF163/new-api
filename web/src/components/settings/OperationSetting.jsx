@@ -37,6 +37,8 @@ const OperationSetting = () => {
     QuotaForInviter: 0,
     QuotaForInvitee: 0,
     'quota_setting.enable_free_model_pre_consume': true,
+    PostpaidEnabled: false,
+    PostpaidCreditDays: 0,
 
     /* 通用设置 */
     TopUpLink: '',
@@ -157,3 +159,4 @@ const OperationSetting = () => {
 };
 
 export default OperationSetting;
+

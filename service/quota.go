@@ -139,7 +139,26 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 	quota := calculateAudioQuota(quotaInfo)
 
 	if userQuota < quota {
-		return fmt.Errorf("user quota is not enough, user quota: %s, need quota: %s", logger.FormatQuota(userQuota), logger.FormatQuota(quota))
+		if common.PostpaidEnabled && common.PostpaidCreditDays > 0 {
+			// Only enforce due time when the user is already in debt.
+			if userQuota < 0 {
+				debtStartTime, err := model.GetUserDebtStartTime(relayInfo.UserId)
+				if err != nil {
+					return err
+				}
+				if debtStartTime == 0 {
+					now := time.Now().Unix()
+					_ = model.TrySetUserDebtStartTimeIfUnset(relayInfo.UserId, now)
+					debtStartTime = now
+				}
+				dueTime := debtStartTime + int64(common.PostpaidCreditDays)*24*60*60
+				if time.Now().Unix() > dueTime {
+					return fmt.Errorf("postpaid credit period expired, please top up to continue (debt_start_time=%d, credit_days=%d)", debtStartTime, common.PostpaidCreditDays)
+				}
+			}
+		} else {
+			return fmt.Errorf("user quota is not enough, user quota: %s, need quota: %s", logger.FormatQuota(userQuota), logger.FormatQuota(quota))
+		}
 	}
 
 	if !token.UnlimitedQuota && token.RemainQuota < quota {

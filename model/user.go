@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
@@ -34,6 +35,7 @@ type User struct {
 	VerificationCode string         `json:"verification_code" gorm:"-:all"`                                    // this field is only for Email verification, don't save it to database!
 	AccessToken      *string        `json:"access_token" gorm:"type:char(32);column:access_token;uniqueIndex"` // this token is for system management
 	Quota            int            `json:"quota" gorm:"type:int;default:0"`
+	DebtStartTime    int64          `json:"debt_start_time" gorm:"type:bigint;default:0;column:debt_start_time"`
 	UsedQuota        int            `json:"used_quota" gorm:"type:int;default:0;column:used_quota"` // used quota
 	RequestCount     int            `json:"request_count" gorm:"type:int;default:0;"`               // request number
 	Group            string         `json:"group" gorm:"type:varchar(64);default:'default'"`
@@ -51,13 +53,14 @@ type User struct {
 
 func (user *User) ToBaseUser() *UserBase {
 	cache := &UserBase{
-		Id:       user.Id,
-		Group:    user.Group,
-		Quota:    user.Quota,
-		Status:   user.Status,
-		Username: user.Username,
-		Setting:  user.Setting,
-		Email:    user.Email,
+		Id:            user.Id,
+		Group:         user.Group,
+		Quota:         user.Quota,
+		DebtStartTime: user.DebtStartTime,
+		Status:        user.Status,
+		Username:      user.Username,
+		Setting:       user.Setting,
+		Email:         user.Email,
 	}
 	return cache
 }
@@ -382,6 +385,7 @@ func (user *User) Insert(inviterId int) error {
 		}
 	}
 	user.Quota = common.QuotaForNewUser
+	user.DebtStartTime = 0
 	//user.SetAccessToken(common.GetUUID())
 	user.AffCode = common.GetRandomString(4)
 
@@ -457,6 +461,7 @@ func (user *User) Edit(updatePassword bool) error {
 	}
 
 	newUser := *user
+	DB.First(&user, user.Id)
 	updates := map[string]interface{}{
 		"username":     newUser.Username,
 		"display_name": newUser.DisplayName,
@@ -464,11 +469,15 @@ func (user *User) Edit(updatePassword bool) error {
 		"quota":        newUser.Quota,
 		"remark":       newUser.Remark,
 	}
+	if newUser.Quota >= 0 {
+		updates["debt_start_time"] = int64(0)
+	} else if user.DebtStartTime == 0 {
+		updates["debt_start_time"] = time.Now().Unix()
+	}
 	if updatePassword {
 		updates["password"] = newUser.Password
 	}
 
-	DB.First(&user, user.Id)
 	if err = DB.Model(user).Updates(updates).Error; err != nil {
 		return err
 	}
@@ -704,6 +713,18 @@ func GetUserEmail(id int) (email string, err error) {
 	return email, err
 }
 
+func GetUserDebtStartTime(id int) (debtStartTime int64, err error) {
+	err = DB.Model(&User{}).Where("id = ?", id).Select("debt_start_time").Find(&debtStartTime).Error
+	return debtStartTime, err
+}
+
+func TrySetUserDebtStartTimeIfUnset(id int, debtStartTime int64) error {
+	return DB.Model(&User{}).
+		Where("id = ? AND debt_start_time = 0", id).
+		Update("debt_start_time", debtStartTime).
+		Error
+}
+
 // GetUserGroup gets group from Redis first, falls back to DB if needed
 func GetUserGroup(id int, fromDB bool) (group string, err error) {
 	defer func() {
@@ -781,11 +802,7 @@ func IncreaseUserQuota(id int, quota int, db bool) (err error) {
 }
 
 func increaseUserQuota(id int, quota int) (err error) {
-	err = DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", quota)).Error
-	if err != nil {
-		return err
-	}
-	return err
+	return deltaUpdateUserQuotaInDB(id, quota)
 }
 
 func DecreaseUserQuota(id int, quota int) (err error) {
@@ -806,11 +823,37 @@ func DecreaseUserQuota(id int, quota int) (err error) {
 }
 
 func decreaseUserQuota(id int, quota int) (err error) {
-	err = DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota - ?", quota)).Error
-	if err != nil {
-		return err
+	return deltaUpdateUserQuotaInDB(id, -quota)
+}
+
+func deltaUpdateUserQuotaInDB(id int, delta int) (err error) {
+	if delta == 0 {
+		return nil
 	}
-	return err
+	now := time.Now().Unix()
+
+	updates := map[string]interface{}{
+		"quota": gorm.Expr("quota + ?", delta),
+	}
+
+	// Maintain a debt start timestamp so we can enforce postpaid credit days.
+	// - If quota becomes non-negative: clear debt_start_time.
+	// - If quota becomes negative and debt_start_time is empty: set it to now.
+	// Note: even when postpaid is disabled, we still clear debt_start_time once quota is non-negative
+	// to avoid stale state when toggling settings.
+	if common.PostpaidEnabled && common.PostpaidCreditDays > 0 {
+		updates["debt_start_time"] = gorm.Expr(
+			"CASE WHEN quota + ? >= 0 THEN 0 WHEN debt_start_time = 0 AND quota + ? < 0 THEN ? ELSE debt_start_time END",
+			delta, delta, now,
+		)
+	} else {
+		updates["debt_start_time"] = gorm.Expr(
+			"CASE WHEN quota + ? >= 0 THEN 0 ELSE debt_start_time END",
+			delta,
+		)
+	}
+
+	return DB.Model(&User{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func DeltaUpdateUserQuota(id int, delta int) (err error) {
