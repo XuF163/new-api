@@ -230,15 +230,15 @@ export default function SettingsCreditLimit(props) {
               </Col>
               <Col xs={24} sm={12} md={8} lg={8} xl={8}>
                 <Form.InputNumber
-                  label={t('å•æ—¥èµŠè´¦æœ€å¤§é¢åº¦')}
+                  label={t('单日赊账最大额度')}
                   field={'PostpaidDailyDebtLimit'}
                   step={1}
                   min={0}
                   suffix={'Token'}
                   extraText={t(
-                    'ä»…é™åˆ¶å½“æ—¥æ–°å¢žæ¬ è´¹é¢åº¦ï¼Œè®¾ç½®ä¸?0 è¡¨ç¤ºä¸é™åˆ¶ï¼ˆä»¥æœåŠ¡å™¨å½“åœ°0ç‚¹ä¸ºåˆ†ç•Œï¼?)',
+                    '仅限制当日新增欠费额度，设置为 0 表示不限制（以服务器本地 0 点为分界）',
                   )}
-                  placeholder={t('ä¾‹å¦‚ï¼?100000')}
+                  placeholder={t('例如：100000')}
                   onChange={(value) =>
                     setInputs({
                       ...inputs,
